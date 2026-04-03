@@ -1,95 +1,658 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Digit Classifier</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com"/>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Playfair+Display:wght@400;500&display=swap"
-          rel="stylesheet"/>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Digit Classifier</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Playfair+Display:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:           #ffffff;
+      --bg-secondary: #f5f5f4;
+      --text:         #1a1a1a;
+      --text-muted:   #6b6b6b;
+      --text-hint:    #a0a0a0;
+      --border:       rgba(0,0,0,0.12);
+      --border-md:    rgba(0,0,0,0.25);
+      --border-strong:rgba(0,0,0,0.40);
+      --danger-bg:    #fef2f2;
+      --danger-text:  #b91c1c;
+      --radius-md:    8px;
+      --radius-lg:    12px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg:           #1a1a1a;
+        --bg-secondary: #242424;
+        --text:         #f0f0f0;
+        --text-muted:   #9a9a9a;
+        --text-hint:    #606060;
+        --border:       rgba(255,255,255,0.12);
+        --border-md:    rgba(255,255,255,0.25);
+        --border-strong:rgba(255,255,255,0.40);
+        --danger-bg:    #2d1515;
+        --danger-text:  #f87171;
+      }
+    }
+
+    body {
+      font-family: 'DM Mono', monospace;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    .page {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 2.5rem 1.25rem 4rem;
+    }
+
+    /* ── Header ── */
+    .header {
+      display: flex;
+      align-items: baseline;
+      gap: 14px;
+      padding-bottom: 1rem;
+      border-bottom: 0.5px solid var(--border);
+      margin-bottom: 2rem;
+    }
+
+    .header h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 24px;
+      font-weight: 400;
+      letter-spacing: -0.02em;
+    }
+
+    .header .tag {
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-hint);
+    }
+
+    /* ── Status bar ── */
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--bg-secondary);
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 1.25rem;
+    }
+
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--text-hint);
+      flex-shrink: 0;
+      transition: background 0.3s;
+    }
+    .dot.ok  { background: #4caf50; }
+    .dot.err { background: #e53935; }
+
+    /* ── URL row ── */
+    .url-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 2rem;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      height: 36px;
+      padding: 0 12px;
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      background: var(--bg);
+      color: var(--text);
+      border: 0.5px solid var(--border-md);
+      border-radius: var(--radius-md);
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    input[type="text"]:focus { border-color: var(--border-strong); }
+
+    /* ── Buttons ── */
+    .btn {
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      height: 36px;
+      padding: 0 16px;
+      border: 0.5px solid var(--border-md);
+      border-radius: var(--radius-md);
+      background: transparent;
+      color: var(--text);
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s, opacity 0.15s;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn:hover  { background: var(--bg-secondary); }
+    .btn:active { transform: scale(0.98); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    .btn.primary {
+      background: var(--text);
+      color: var(--bg);
+      border-color: var(--text);
+    }
+    .btn.primary:hover   { opacity: 0.85; background: var(--text); }
+    .btn.primary:disabled{ opacity: 0.35; }
+
+    /* ── Drop zone ── */
+    .drop-zone {
+      position: relative;
+      border: 0.5px dashed var(--border-md);
+      border-radius: var(--radius-lg);
+      padding: 3rem 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+      margin-bottom: 0.5rem;
+    }
+    .drop-zone:hover, .drop-zone.drag {
+      background: var(--bg-secondary);
+      border-color: var(--border-strong);
+    }
+
+    .drop-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    .drop-label { pointer-events: none; }
+
+    .drop-label strong {
+      display: block;
+      font-family: 'Playfair Display', serif;
+      font-size: 32px;
+      font-weight: 400;
+      color: var(--text);
+      margin-bottom: 8px;
+      letter-spacing: -0.02em;
+    }
+
+    .drop-label p {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.8;
+      letter-spacing: 0.04em;
+    }
+
+    .size-warn {
+      font-size: 11px;
+      color: var(--danger-text);
+      margin-bottom: 1rem;
+      display: none;
+    }
+    .size-warn.show { display: block; }
+
+    /* ── Preview ── */
+    .preview-wrap {
+      display: none;
+      margin-bottom: 1.5rem;
+      position: relative;
+    }
+    .preview-wrap.show { display: block; }
+
+    .preview-img {
+      width: 100%;
+      max-height: 260px;
+      object-fit: contain;
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--bg-secondary);
+      display: block;
+    }
+
+    .preview-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--text-hint);
+      margin-top: 6px;
+    }
+
+    .clear-btn {
+      position: absolute;
+      top: 8px; right: 8px;
+      width: 26px; height: 26px;
+      border-radius: 50%;
+      border: 0.5px solid var(--border-md);
+      background: var(--bg);
+      color: var(--text-muted);
+      font-size: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s;
+    }
+    .clear-btn:hover { background: var(--bg-secondary); }
+
+    /* ── Actions ── */
+    .actions {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 2rem;
+    }
+
+    /* ── Spinner ── */
+    .spinner {
+      display: none;
+      width: 14px; height: 14px;
+      border: 1.5px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    .spinner.show { display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Error box ── */
+    .error-box {
+      display: none;
+      padding: 12px 14px;
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--danger-bg);
+      color: var(--danger-text);
+      font-size: 12px;
+      margin-bottom: 1.5rem;
+      line-height: 1.6;
+    }
+    .error-box.show { display: block; }
+
+    /* ── Divider ── */
+    hr {
+      border: none;
+      border-top: 0.5px solid var(--border);
+      margin: 2rem 0;
+    }
+
+    /* ── Result ── */
+    .result-block { display: none; }
+    .result-block.show { display: block; }
+
+    .section-label {
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-hint);
+      margin-bottom: 1rem;
+    }
+
+    .digit-display {
+      font-family: 'Playfair Display', serif;
+      font-size: 96px;
+      font-weight: 400;
+      line-height: 1;
+      letter-spacing: -0.04em;
+      margin-bottom: 0.75rem;
+    }
+
+    .confidence-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 2rem;
+    }
+
+    .conf-val {
+      font-size: 13px;
+      color: var(--text-muted);
+      min-width: 36px;
+    }
+
+    .bar-track {
+      flex: 1;
+      height: 2px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      background: var(--text);
+      border-radius: 2px;
+      width: 0%;
+      transition: width 0.45s ease;
+    }
+
+    /* ── Probability grid ── */
+    .prob-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 6px;
+      margin-bottom: 2.5rem;
+    }
+
+    .prob-cell {
+      position: relative;
+      overflow: hidden;
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 10px 4px 8px;
+      text-align: center;
+      background: var(--bg-secondary);
+      transition: border-color 0.2s;
+    }
+    .prob-cell.winner {
+      border-color: var(--border-strong);
+      background: var(--bg);
+    }
+
+    .prob-fill {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      background: var(--border);
+      height: 0%;
+      transition: height 0.45s ease;
+    }
+    .prob-cell.winner .prob-fill { background: var(--border-md); }
+
+    .prob-digit {
+      position: relative;
+      z-index: 1;
+      display: block;
+      font-size: 16px;
+      font-weight: 500;
+    }
+
+    .prob-pct {
+      position: relative;
+      z-index: 1;
+      display: block;
+      font-size: 10px;
+      color: var(--text-hint);
+      margin-top: 3px;
+    }
+    .prob-cell.winner .prob-pct { color: var(--text-muted); }
+
+    /* ── History ── */
+    .history-section { display: none; margin-top: 2rem; }
+    .history-section.show { display: block; }
+
+    .history-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .chip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--bg-secondary);
+      font-size: 12px;
+    }
+    .chip .c-digit { font-weight: 500; font-size: 14px; }
+    .chip .c-conf  { color: var(--text-hint); font-size: 11px; }
+
+    /* ── Responsive ── */
+    @media (max-width: 480px) {
+      .page { padding: 1.5rem 1rem 3rem; }
+      .digit-display { font-size: 72px; }
+      .prob-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
+      .url-row { flex-direction: column; }
+      .url-row input { width: 100%; }
+    }
+  </style>
 </head>
 <body>
 <div class="page">
 
-    <!-- Header -->
-    <div class="header">
-        <h1>Digit Classifier</h1>
-        <span class="tag">MNIST · KNN</span>
+  <!-- Header -->
+  <div class="header">
+    <h1>Digit Classifier</h1>
+    <span class="tag">MNIST · KNN</span>
+  </div>
+
+  <!-- Status bar -->
+  <div class="status-bar">
+    <span class="dot" id="dot"></span>
+    <span id="status-text">Checking API...</span>
+    <span style="flex:1"></span>
+    <button class="btn" onclick="checkHealth()" style="height:28px;font-size:11px;padding:0 10px">ping</button>
+  </div>
+
+  <!-- API URL -->
+  <div class="url-row">
+    <input type="text" id="api-url" value="https://mnistclassification-production.up.railway.app" placeholder="http://localhost:8000"/>
+    <button class="btn" onclick="checkHealth()">connect</button>
+  </div>
+
+  <!-- Drop zone -->
+  <div class="drop-zone" id="drop-zone">
+    <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp"
+           onchange="onFileSelect(this.files[0])"/>
+    <div class="drop-label">
+      <strong>drop image here</strong>
+      <p>jpg · png · webp &nbsp;·&nbsp; max 1 mb</p>
+    </div>
+  </div>
+  <p class="size-warn" id="size-warn">File exceeds 1 MB limit.</p>
+
+  <!-- Preview -->
+  <div class="preview-wrap" id="preview-wrap">
+    <img class="preview-img" id="preview-img" src="" alt="preview"/>
+    <button class="clear-btn" onclick="clearFile()">×</button>
+    <div class="preview-meta">
+      <span id="preview-name"></span>
+      <span id="preview-size"></span>
+    </div>
+  </div>
+
+  <!-- Error -->
+  <div class="error-box" id="error-box"></div>
+
+  <!-- Actions -->
+  <div class="actions">
+    <button class="btn primary" id="predict-btn" onclick="predict()" disabled>
+      predict
+      <span class="spinner" id="spinner"></span>
+    </button>
+    <button class="btn" onclick="clearAll()">clear</button>
+  </div>
+
+  <!-- Result -->
+  <div class="result-block" id="result-block">
+    <hr/>
+    <p class="section-label">prediction</p>
+    <div class="digit-display" id="digit-display">—</div>
+
+    <div class="confidence-row">
+      <span class="conf-val" id="conf-val">0%</span>
+      <div class="bar-track"><div class="bar-fill" id="bar-fill"></div></div>
     </div>
 
-    <!-- Status bar -->
-    <div class="status-bar">
-        <span class="dot" id="dot"></span>
-        <span id="status-text">Checking API...</span>
-        <span style="flex:1"></span>
-        <button class="btn" onclick="checkHealth()" style="height:28px;font-size:11px;padding:0 10px">ping</button>
-    </div>
+    <p class="section-label">class probabilities</p>
+    <div class="prob-grid" id="prob-grid"></div>
+  </div>
 
-    <!-- API URL -->
-    <div class="url-row">
-        <input type="text" id="api-url" value="http://localhost:8000" placeholder="http://localhost:8000"/>
-        <button class="btn" onclick="checkHealth()">connect</button>
-    </div>
-
-    <!-- Drop zone -->
-    <div class="drop-zone" id="drop-zone">
-        <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp"
-               onchange="onFileSelect(this.files[0])"/>
-        <div class="drop-label">
-            <strong>drop image here</strong>
-            <p>jpg · png · webp &nbsp;·&nbsp; max 1 mb</p>
-        </div>
-    </div>
-    <p class="size-warn" id="size-warn">File exceeds 1 MB limit.</p>
-
-    <!-- Preview -->
-    <div class="preview-wrap" id="preview-wrap">
-        <img class="preview-img" id="preview-img" src="" alt="preview"/>
-        <button class="clear-btn" onclick="clearFile()">×</button>
-        <div class="preview-meta">
-            <span id="preview-name"></span>
-            <span id="preview-size"></span>
-        </div>
-    </div>
-
-    <!-- Error -->
-    <div class="error-box" id="error-box"></div>
-
-    <!-- Actions -->
-    <div class="actions">
-        <button class="btn primary" id="predict-btn" onclick="predict()" disabled>
-            predict
-            <span class="spinner" id="spinner"></span>
-        </button>
-        <button class="btn" onclick="clearAll()">clear</button>
-    </div>
-
-    <!-- Result -->
-    <div class="result-block" id="result-block">
-        <hr/>
-        <p class="section-label">prediction</p>
-        <div class="digit-display" id="digit-display">—</div>
-
-        <div class="confidence-row">
-            <span class="conf-val" id="conf-val">0%</span>
-            <div class="bar-track">
-                <div class="bar-fill" id="bar-fill"></div>
-            </div>
-        </div>
-
-        <p class="section-label">class probabilities</p>
-        <div class="prob-grid" id="prob-grid"></div>
-    </div>
-
-    <!-- History -->
-    <div class="history-section" id="history-section">
-        <p class="section-label">recent predictions</p>
-        <div class="history-chips" id="history-chips"></div>
-    </div>
+  <!-- History -->
+  <div class="history-section" id="history-section">
+    <p class="section-label">recent predictions</p>
+    <div class="history-chips" id="history-chips"></div>
+  </div>
 
 </div>
 
-<script src="main.js"></script>
+<script>
+  let currentFile = null;
+  let history     = [];
+
+  const $  = id => document.getElementById(id);
+  const url = () => $('api-url').value.replace(/\/$/, '');
+
+  /* ── Health check ── */
+  async function checkHealth() {
+    const dot = $('dot'), txt = $('status-text');
+    dot.className = 'dot';
+    txt.textContent = 'Checking...';
+    try {
+      const r = await fetch(url() + '/health');
+      const d = await r.json();
+      if (d.status === 'ok' && d.model_loaded) {
+        dot.className = 'dot ok';
+        txt.textContent = 'API online · model loaded';
+      } else {
+        dot.className = 'dot err';
+        txt.textContent = d.model_loaded ? 'API online · model not loaded' : 'Unhealthy';
+      }
+    } catch {
+      dot.className = 'dot err';
+      txt.textContent = 'Cannot reach API at ' + url();
+    }
+  }
+
+  /* ── File select ── */
+  function onFileSelect(file) {
+    if (!file) return;
+    clearError();
+    const warn = $('size-warn');
+    if (file.size > 1 * 1024 * 1024) {
+      warn.classList.add('show');
+      $('predict-btn').disabled = true;
+      return;
+    }
+    warn.classList.remove('show');
+    currentFile = file;
+    $('preview-img').src = URL.createObjectURL(file);
+    $('preview-name').textContent = file.name;
+    $('preview-size').textContent = (file.size / 1024).toFixed(1) + ' KB';
+    $('preview-wrap').classList.add('show');
+    $('drop-zone').style.display = 'none';
+    $('predict-btn').disabled = false;
+  }
+
+  /* ── Clear ── */
+  function clearFile() {
+    currentFile = null;
+    $('preview-wrap').classList.remove('show');
+    $('drop-zone').style.display = '';
+    $('file-input').value = '';
+    $('predict-btn').disabled = true;
+    $('size-warn').classList.remove('show');
+    clearError();
+  }
+
+  function clearAll() {
+    clearFile();
+    $('result-block').classList.remove('show');
+    $('digit-display').textContent = '—';
+  }
+
+  function clearError() {
+    const b = $('error-box');
+    b.textContent = '';
+    b.classList.remove('show');
+  }
+
+  function showError(msg) {
+    const b = $('error-box');
+    b.textContent = msg;
+    b.classList.add('show');
+  }
+
+  /* ── Predict ── */
+  async function predict() {
+    if (!currentFile) return;
+    clearError();
+    const btn  = $('predict-btn');
+    const spin = $('spinner');
+    btn.disabled = true;
+    spin.classList.add('show');
+
+    const form = new FormData();
+    form.append('file', currentFile);
+
+    try {
+      const r = await fetch(url() + '/predict', { method: 'POST', body: form });
+      const d = await r.json();
+      if (!r.ok) { showError('Error ' + r.status + ': ' + (d.detail || 'Unknown error')); return; }
+      renderResult(d);
+      addHistory(d);
+    } catch {
+      showError('Failed to reach API. Is it running at ' + url() + '?');
+    } finally {
+      btn.disabled = false;
+      spin.classList.remove('show');
+    }
+  }
+
+  /* ── Render result ── */
+  function renderResult(d) {
+    $('result-block').classList.add('show');
+    $('digit-display').textContent = d.predicted_digit;
+
+    const pct = Math.round(d.confidence * 100);
+    $('conf-val').textContent = pct + '%';
+    $('bar-fill').style.width  = pct + '%';
+
+    const grid = $('prob-grid');
+    grid.innerHTML = '';
+    for (let i = 0; i <= 9; i++) {
+      const p   = d.probabilities[String(i)] || 0;
+      const win = i === d.predicted_digit;
+      const cell = document.createElement('div');
+      cell.className = 'prob-cell' + (win ? ' winner' : '');
+      cell.innerHTML =
+        '<div class="prob-fill" style="height:' + Math.round(p * 100) + '%"></div>' +
+        '<span class="prob-digit">' + i + '</span>' +
+        '<span class="prob-pct">'  + Math.round(p * 100) + '%</span>';
+      grid.appendChild(cell);
+    }
+  }
+
+  /* ── History ── */
+  function addHistory(d) {
+    history.unshift({ digit: d.predicted_digit, conf: Math.round(d.confidence * 100) });
+    if (history.length > 10) history.pop();
+    const container = $('history-chips');
+    $('history-section').classList.add('show');
+    container.innerHTML = '';
+    history.forEach(h => {
+      const chip = document.createElement('div');
+      chip.className = 'chip';
+      chip.innerHTML = '<span class="c-digit">' + h.digit + '</span><span class="c-conf">' + h.conf + '%</span>';
+      container.appendChild(chip);
+    });
+  }
+
+  /* ── Drag and drop ── */
+  const dz = $('drop-zone');
+  dz.addEventListener('dragover',  e => { e.preventDefault(); dz.classList.add('drag'); });
+  dz.addEventListener('dragleave', ()  => dz.classList.remove('drag'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault();
+    dz.classList.remove('drag');
+    const f = e.dataTransfer.files[0];
+    if (f) onFileSelect(f);
+  });
+
+  checkHealth();
+</script>
 </body>
 </html>
