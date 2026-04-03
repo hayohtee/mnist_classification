@@ -109,11 +109,11 @@ numpy==2.4.4
     #   mnist-classification (pyproject.toml)
     #   contourpy
     #   matplotlib
-    #   opencv-python
+    #   opencv-python-headless
     #   pandas
     #   scikit-learn
     #   scipy
-opencv-python==4.13.0.92
+opencv-python-headless==4.13.0.92
     # via mnist-classification (pyproject.toml)
 packaging==26.0
     # via
