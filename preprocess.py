@@ -1,6 +1,6 @@
+import cv2
 import matplotlib.pyplot as plt
 import numpy as np
-import cv2
 
 
 def plot_digit(digit: np.ndarray) -> None:
